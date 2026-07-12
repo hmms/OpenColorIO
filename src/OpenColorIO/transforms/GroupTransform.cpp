@@ -64,10 +64,10 @@ GroupTransformRcPtr GroupTransform::ParseFromBuffer(const char * buffer, size_t 
         throw Exception("GroupTransform::ParseFromBuffer: buffer is null or empty.");
     }
 
-    // Hash the buffer contents. The hash is used both as the file name given to the
-    // FileTransform and as the fast LUT file hash returned by the ConfigIOProxy, so that
-    // the global file caches (which are keyed on these strings) never confuse the contents
-    // of two different buffers.
+    // Hash the buffer contents. The hash is used both to form the synthetic file name given
+    // to the FileTransform and as the fast LUT file hash returned by the ConfigIOProxy, so
+    // that the global file caches (which are keyed on these strings) never confuse the
+    // contents of two different buffers.
     const std::string contentHash = CacheIDHash(buffer, bufferSize);
 
     ConfigIOProxyRcPtr ciop = std::make_shared<BufferConfigIOProxy>(buffer,
@@ -77,8 +77,13 @@ GroupTransformRcPtr GroupTransform::ParseFromBuffer(const char * buffer, size_t 
     ConfigRcPtr config = Config::CreateRaw()->createEditableCopy();
     config->setConfigIOProxy(ciop);
 
+    // Prefix the hash to form a synthetic file name so that the global file cache entries
+    // created here can never collide with those of a real file whose resolved path happens
+    // to match the bare hash string.
+    const std::string syntheticFileName = "ParseFromBuffer:" + contentHash;
+
     FileTransformRcPtr fileTransform = FileTransform::Create();
-    fileTransform->setSrc(contentHash.c_str());
+    fileTransform->setSrc(syntheticFileName.c_str());
 
     try
     {
